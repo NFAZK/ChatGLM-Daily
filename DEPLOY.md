@@ -14,6 +14,24 @@
 
 refresh token 有效期约到 2027 年 4 月，到期前重新取一次即可。
 
+## 每天都能跑的保障（三层）
+
+| 层 | 文件 | 作用 | 断掉时的表现 |
+|---|---|---|---|
+| 定时执行 | `daily.yml` | 每天 08:10 北京时间签到领取 | 红叉 + 失败邮件 |
+| 防暂停 | `keepalive.yml` | 每月 1 日写一次提交。GitHub 规则：公开仓库连续 60 天无活动，schedule 会被**静默暂停**，bot 提交同样算活动 | 红叉 |
+| 看门狗 | `watchdog.yml` | 每天 10:00 北京时检查过去 26 小时有没有成功运行，没有就主动失败 | 红叉 + 日志里写明该查哪三项 |
+
+`keepalive` 与 `watchdog` 都已实跑验证：前者产生了提交 `8a20c58`，后者输出「窗口内成功数: 1 / 签到任务运行正常」。
+
+**还剩一项只能等时间验证**：`event=schedule` 的首次真实触发在 2026-11-17 00:10 UTC。在那之前所有运行都是手动 `workflow_dispatch`。第二天在 Actions 里看到事件列写 `schedule` 的那一条，才算真正闭环。
+
+## 出问题时怎么让你知道
+
+1. **GitHub 邮件**：工作流失败会发邮件。确认 Settings → Notifications → Actions 邮件通知没被关。
+2. **手机推送**：在 Secrets 里配任一通道，脚本跑完会把结果推给你——`PLUSPLUS_TOKEN`（PushPlus）、`BARK_URL`、`WECOM_WEBHOOK`、`DINGTALK_WEBHOOK`。
+3. **手动核对**：Actions 页面看最近一条运行是不是 `success`，10 秒的事。
+
 ## 当前状态
 
 | 项 | 值 |
