@@ -76,6 +76,36 @@ Value: 主账号|ACCESS_TOKEN|REFRESH_TOKEN|DEVICE_UUID
 
 ⚠️ 这些等同于你账号的登录凭据。只放 Secret，不要写进仓库里的任何文件，也不要贴到 Issue / 聊天里。
 
+## 多账号
+
+支持。脚本读 `CHATGLM_ACCOUNTS`，**每行一个账号**，用 `|` 分隔，换行或 `&` 都算分隔符：
+
+```
+备注1|ACCESS_TOKEN|REFRESH_TOKEN|DEVICE_UUID
+备注2|ACCESS_TOKEN|REFRESH_TOKEN|DEVICE_UUID
+```
+
+- `ACCESS_TOKEN` 可以留空（写成 `备注2||REFRESH|DEVICE`），脚本会用 refresh 自己换
+- `DEVICE_UUID` 每个账号填**各自**的，不要共用；不知道就留空，脚本从 JWT 的 `device_id` 声明取
+- 每个账号要单独取一次登录态：浏览器切到对应账号（或用另一个浏览器 profile / 另一台设备），重复"取登录态"那三步
+
+**一个坑必须先讲清楚**：
+
+> 一旦设置了 `CHATGLM_ACCOUNTS`，`CHATGLM_TOKEN` / `CHATGLM_REFRESH_TOKEN` 那两个**单独变量会被整个忽略**。
+> 现有账号必须一并写进 `CHATGLM_ACCOUNTS` 的第一行，否则它会从运行里消失。
+
+运行行为（`chatglm_daily.py` 的 `main()` 实测逻辑）：
+
+| 项 | 行为 |
+|---|---|
+| 执行方式 | 串行，账号之间间隔 1 秒 |
+| 失败隔离 | 每个账号独立 try/except，一个账号挂了不影响其他 |
+| 输出 | 每个账号一行 `成功/跳过/失败`，末尾一段汇总 |
+| 退出码 | 至少一个账号成功 → `0`；全部失败 → `1` |
+| 状态 | 令牌、设备号、新手任务进度按账号分别存在 `chatglm_state.json` |
+
+风控提醒：多账号从**同一个 GitHub 出口 IP** 串行请求，账号越多越容易被关联判定。建议 ≤3 个、每天一次，且别用同一个 `device_id` 套在多个账号上。
+
 ## 填完之后
 
 Actions → `Zhipu Daily Check-in` → **Run workflow**，等 1~2 分钟看日志：
