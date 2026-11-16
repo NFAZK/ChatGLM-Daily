@@ -1,17 +1,16 @@
-name: ChatGLM Daily
+name: Zhipu Daily Check-in
 
 on:
-  # 公开仓库默认不跑定时，避免空跑。
-  # fork 后启用定时：取消下面两行注释；cron 使用 UTC。
-  # schedule:
-  #   - cron: "10 0 * * *"
+  # 每天北京时间 08:10（GitHub cron 用 UTC，所以是 0:10 UTC）
+  schedule:
+    - cron: "10 0 * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ChatGLM-Daily
+  group: Zhipu-Daily
   cancel-in-progress: false
 
 jobs:
@@ -32,7 +31,7 @@ jobs:
       - name: Install deps
         run: pip install -r requirements.txt
 
-      - name: Run ChatGLM Daily
+      - name: Run Zhipu Daily
         env:
           CHATGLM_ACCOUNTS: ${{ secrets.CHATGLM_ACCOUNTS }}
           CHATGLM_TOKEN: ${{ secrets.CHATGLM_TOKEN }}
