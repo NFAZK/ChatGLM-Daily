@@ -1,0 +1,41 @@
+name: Daily Watchdog
+
+# 目的：签到任务"没跑"和"跑失败"是两回事。daily.yml 失败会有红叉，
+# 但如果是 Actions 被暂停、cron 没触发，页面上一片安静，你根本不会知道。
+# 这个看门狗每天晚 2 小时检查一次：过去 26 小时内必须有成功的签到运行，否则直接失败报警。
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # 每天 02:00 UTC = 北京时间 10:00
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 检查最近 26 小时内是否存在成功的签到运行
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          since=$(date -u -d '26 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          echo "检查窗口: $since 之后"
+          resp=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/daily.yml/runs?per_page=20")
+          total=$(echo "$resp" | jq -r '.workflow_runs | length')
+          ok=$(echo "$resp" | jq -r --arg since "$since" \
+            '[.workflow_runs[] | select(.created_at > $since) | select(.conclusion == "success")] | length')
+          echo "近期运行总数: $total ；窗口内成功数: $ok"
+          echo "$resp" | jq -r --arg since "$since" \
+            '.workflow_runs[] | select(.created_at > $since) | "  \(.created_at)  \(.event)  \(.conclusion)"'
+          if [ "$ok" -eq 0 ]; then
+            echo "::error::过去 26 小时内没有成功的签到运行。请检查：1) Actions 是否被暂停 2) refresh token 是否失效 3) 上游签名是否改版"
+            exit 1
+          fi
+          echo "签到任务运行正常"
